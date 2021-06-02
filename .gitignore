@@ -79,3 +79,6 @@ project/metals.sbt
 .bloop/
 project/secret
 
+# ---
+# Random IO
+*.txt
