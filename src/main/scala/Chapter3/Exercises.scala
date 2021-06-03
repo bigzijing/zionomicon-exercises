@@ -1,6 +1,5 @@
 package Chapter3
 
-import zio.Cause.{Die, Fail}
 import zio._
 
 object Exercises extends App {
@@ -40,7 +39,7 @@ object Exercises extends App {
         console.putStrLn(cause.prettyPrint)
         zio
       },
-      success = a => ZIO.succeed(a)
+      success = _ => zio
     )
 
   // 4. Using the ZIO `foldCauseM` method, which “runs” an effect to an Exit
@@ -52,7 +51,7 @@ object Exercises extends App {
   ): ZIO[R, E, A] =
     zio.foldCauseM(
       failure = _ => handler *> zio,
-      success = a => ZIO.succeed(a)
+      success = _ => zio
     )
 
   // 5. Using the ZIO `refineOrDie` method, implement the ioException function,
@@ -132,7 +131,7 @@ object Exercises extends App {
     )
 
   // 10. Using the ZIO `foldCauseM` method, implement the following function.
-  def catchAllCause[R, E1, E2, A](
+  def catchAllCause2[R, E1, E2, A](
     zio: ZIO[R, E1, A],
     handler: Cause[E1] => ZIO[R, E2, A]
   ): ZIO[R, E2, A] =
