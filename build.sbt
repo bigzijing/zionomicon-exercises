@@ -1,9 +1,25 @@
 lazy val versions = new {
-  val scalaVersion = "2.13.5"
-  val zio = "1.0.7"
-  val zioMagic = "0.2.6"
-  val zioConfig = "1.0.4"
-  val zioTestIntellij = "1.0.7"
+  val scalaVersion = "2.13.10"
+  val zio2V = "2.0.10"
+
+  val zio2 = Seq(
+    "dev.zio" %% "zio" % zio2V,
+    "dev.zio" %% "zio-streams" % zio2V
+  )
+
+  val zioTest = Seq(
+    "dev.zio" %% "zio-test" % zio2V % Test,
+    "dev.zio" %% "zio-test-sbt" % zio2V % Test
+  )
+
+  val zio2Prelude = Seq(
+    "dev.zio" %% "zio-prelude" % "1.0.0-RC16"
+  ) ++ zio2
+
+  val zioDeps =
+    zio2 ++
+      zioTest ++
+      zio2Prelude
 }
 
 lazy val root =
@@ -11,15 +27,7 @@ lazy val root =
     .in(file("."))
     .settings(settings)
     .settings(
-      libraryDependencies ++= Seq(
-        "dev.zio" %% "zio" % versions.zio,
-        "io.github.kitlangton" %% "zio-magic" % versions.zioMagic,
-        "dev.zio" %% "zio-config" % versions.zioConfig,
-        "dev.zio" %% "zio-test" % versions.zio % Test,
-        "dev.zio" %% "zio-test-sbt" % versions.zio % Test,
-        //In zio-test-intellij absence, you may get no logs on some failing tests when running tests with intellij
-        "dev.zio" %% "zio-test-intellij"  % versions.zioTestIntellij % Test
-      ),
+      libraryDependencies ++= versions.zioDeps,
       testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
     )
 
