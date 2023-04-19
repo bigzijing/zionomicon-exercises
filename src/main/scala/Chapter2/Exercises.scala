@@ -136,6 +136,101 @@ object Exercises {
         case Right(v) => Right(v)
       }
     }
+
+  /**
+    * Exercise 11. Using ZIO.fail and ZIO.succeed, implement the following function, which converts an Either into a ZIO effect
+    */
+  def eitherToZIO[E, A](either: Either[E, A]): ZIO[Any, E, A] =
+    either match {
+      case Right(v) => ZIO.succeed(v)
+      case Left(e)  => ZIO.fail(e)
+    }
+
+  /**
+    * Exercise 12. Using ZIO.fail and ZIO.succeed, implement that following function, which converts a List into a ZIO effect,
+    * by looking at the head element in the list and ignoring the rest of the elements
+    */
+  def listToZIO[A](list: List[A]): ZIO[Any, None.type, A] =
+    list.headOption match {
+      case Some(a) => ZIO.succeed(a)
+      case _       => ZIO.fail(None)
+    }
+
+  /**
+    * Exercise 13. Using ZIO.succeed, convert the following procedural function into a ZIO function:
+    */
+  def currentTime(): Long = java.lang.System.currentTimeMillis()
+
+  lazy val currentTimeZIO: ZIO[Any, Nothing, Long] =
+    ZIO.succeed(currentTime())
+
+  /**
+    * Exercise 14. Using ZIO.async, convert the following asynchronous, callback-based function into a ZIO function
+    */
+  def getCacheValue(
+    key: String,
+    onSuccess: String => Unit,
+    onFailure: Throwable => Unit
+  ): Unit = ???
+
+  def getCacheValueZio(key: String): ZIO[Any, Throwable, String] =
+    ZIO.async { f =>
+      getCacheValue(
+        key,
+        value => f(ZIO.succeed(value)),
+        throwable => f(ZIO.fail(throwable))
+      )
+    }
+
+  /**
+    * Exercise 15. Using ZIO.async, convert the following asynchronous, callback-based function into a ZIO function
+    */
+  trait User
+
+  def saveUserRecord(
+    user: User,
+    onSuccess: () => Unit,
+    onFailure: Throwable => Unit
+  ): Unit = ???
+
+  def saveUserRecordZio(user: User): ZIO[Any, Throwable, Unit] =
+    ZIO.async { f =>
+      saveUserRecord(
+        user,
+        () => f(ZIO.unit),
+        throwable => f(ZIO.fail(throwable))
+      )
+    }
+
+  /**
+    * Exercise 16. Using ZIO.fromFuture, convert the following code to ZIO
+    */
+  import scala.concurrent.{ExecutionContext, Future}
+  trait Query
+  trait Result
+
+  def doQuery(query: Query)(implicit ec: ExecutionContext): Future[Result] = ???
+
+  def doQueryZio(query: Query): ZIO[Any, Throwable, Result] =
+    ZIO.fromFuture(ec => doQuery(query)(ec))
+
+  /**
+    * Exercise 19. Using the Console service and recursion, write a function that will repeatedly
+    * read input from the console until the specified user-defined function evaluates to true on the input
+    */
+  import java.io.IOException
+
+  def readUntil(
+    acceptInput: String => Boolean
+  ): ZIO[Any, IOException, String] =
+    zio.Console.readLine.repeatUntil(acceptInput(_))
+
+  /**
+    * Exercise 20. Using recursion, write a function that will continue evaluating the specified effect,
+    * until the specified user-defined function evaluates to true on the output of the effect
+    */
+  def doWhile[R, E, A](body: ZIO[R, E, A])(condition: A => Boolean): ZIO[R, E, A] =
+    body.repeatUntil(condition(_))
 }
 
 /**
@@ -143,13 +238,56 @@ object Exercises {
   * are passed into the program as command-line arguments
   * You should use the function readFileZio that you developed in these exercises, as well as ZIO.foreach
   */
+// sbt command: runMain Chapter2.Cat args1 args2
+// e.g. `runMain Chapter2.Cat chapter2_file1.txt chapter2.file2.txt`
 object Cat extends ZIOAppDefault {
 
-  // sbt command: runMain Chapter2.Cat args1 args2
-  // e.g. `runMain Chapter2.Cat chapter2_file1.txt chapter2.file2.txt`
   def run =
     (for {
       args <- ZIOAppArgs.getArgs.map(_.toList)
       _    <- ZIO.foreach(args)(readFileZio(_).flatMap(printLine))
+    } yield ()).exitCode
+}
+
+/**
+  * Exercise 17. Using the Console, write a little program that asks the user what their name is,
+  * and then prints it out to them with a greeting
+  */
+// sbt command: runMain Chapter2.HelloHuman
+object HelloHuman extends ZIOAppDefault {
+
+  def run =
+    (for {
+      name <- zio.Console.readLine("What is your name?")
+      _    <- zio.Console.print(s"Hello, $name!")
+    } yield ()).exitCode
+}
+
+/**
+  * Exercise 18. Using the Console and Random services in ZIO, write a little program that asks the user
+  * to guess a randomly chosen number between 1 and 3, and prints out if they were correct or not
+  */
+// runMain Chapter2.NumberGuessing
+object NumberGuessing extends ZIOAppDefault {
+
+  val isValidNumber = (n: String) =>
+    n.toIntOption match {
+      case Some(num) if 1 <= num && num <= 3 => true
+      case _                                 => false
+  }
+
+  def run =
+    (for {
+      ran <- zio.Random.nextIntBetween(1, 4)
+      num <- zio.Console.readLine(s"Guess a number between 1 and 3, inclusive: ")
+      validated <- zio.Console
+        .readLine(s"That was not a valid guess, please try again")
+        .repeatUntil(isValidNumber(_))
+        .when(!isValidNumber(num))
+        .someOrElse(num)
+      _ <- zio.Console
+        .printLine(s"You were correct, the number was $ran!")
+        .when(ran == validated.toInt)
+        .someOrElseZIO(zio.Console.printLine(s"You're wrong, the number was $ran"))
     } yield ()).exitCode
 }
